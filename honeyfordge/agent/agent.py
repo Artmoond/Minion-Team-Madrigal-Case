@@ -1,10 +1,13 @@
+# agent/agent.py
 import time
 import requests
+import socket
+import threading
 
-# Обращаемся к Nginx, а не напрямую к API (маскировка MASK-2)
-CENTER_URL = "http://nginx:80/cdn/assets/v2/metrics.json" 
+CENTER_URL = "http://nginx:80/cdn/assets/v2/metrics.json"
 
 def send_event(event_type: str, source_ip: str, details: dict):
+    """Отправка телеметрии в центр (маскированный канал)"""
     payload = {
         "honeypot_id": 1,
         "event_type": event_type,
@@ -12,20 +15,44 @@ def send_event(event_type: str, source_ip: str, details: dict):
         "details": details
     }
     try:
-        response = requests.post(CENTER_URL, json=payload)
-        print(f"[AGENT] Телеметрия отправлена, ответ: {response.status_code}")
+        requests.post(CENTER_URL, json=payload, timeout=3)
+        print(f"[AGENT] Событие {event_type} от {source_ip} отправлено.")
     except Exception as e:
-        # TODO: Реализовать буферизацию при недоступности центра (FR-A4)
-        print(f"[AGENT] Ошибка отправки: {e}")
+        print(f"[AGENT] Ошибка отправки (нужен локальный буфер!): {e}")
 
-def main():
-    print("[AGENT] Запуск ловушки...")
-    # TODO: Поднять TCP-слушатели (socket/asyncio) на портах 2121 и 2323
+def handle_ftp_connection(client_socket, addr):
+    """Эмуляция ответа FTP сервера (Low interaction)"""
+    ip, port = addr
+    print(f"[FTP] Подключение от {ip}:{port}")
     
-    # Временная заглушка для проверки связи с центром
+    # Фиксируем попытку сканирования/подключения
+    send_event("scan_detected", ip, {"target_port": 21, "protocol": "TCP"})
+    
+    try:
+        # Отправляем фейковый баннер
+        client_socket.send(b"220 (vsFTPd 3.0.3)\r\n")
+        # Ждем ввода от атакующего (логируем первые 1024 байта)
+        data = client_socket.recv(1024).decode('utf-8').strip()
+        if data:
+            send_event("auth_attempt", ip, {"input": data, "target_port": 21})
+    except Exception:
+        pass
+    finally:
+        client_socket.close()
+
+def start_ftp_honeypot(port=21):
+    """Запуск TCP-слушателя на заданном порту"""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", port))
+    server.listen(5)
+    print(f"[AGENT] Low-interaction FTP ловушка запущена на порту {port}")
+    
     while True:
-        send_event("heartbeat", "127.0.0.1", {"status": "listening"})
-        time.sleep(10)
+        client, addr = server.accept()
+        # Обрабатываем каждое подключение в отдельном потоке
+        client_handler = threading.Thread(target=handle_ftp_connection, args=(client, addr))
+        client_handler.start()
 
 if __name__ == "__main__":
-    main()
+    # Запускаем ловушку (в докере она замаплена на порт 2121 снаружи)
+    start_ftp_honeypot(port=21)
