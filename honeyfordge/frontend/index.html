@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>HoneyForge Dashboard</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #111; color: #eee; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        .log { font-family: monospace; color: #0f0; background: #000; padding: 10px; height: 500px; overflow-y: auto; }
+        .event-item { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .alert { color: #ff4444; }
+    </style>
+</head>
+<body>
+    <h1>🍯 HoneyForge Control Center</h1>
+    <div class="grid">
+        <div class="card">
+            <h2>Активные ловушки</h2>
+            <ul id="honeypots-list">Загрузка...</ul>
+        </div>
+        
+        <div class="card">
+            <h2>Live Лента Инцидентов</h2>
+            <div id="events-log" class="log">Ожидание событий...<br></div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Загрузка списка ловушек (REST API)
+        fetch('/api/honeypots')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('honeypots-list');
+                if (data.length === 0) {
+                    list.innerHTML = "<li>Ловушки пока не зарегистрированы</li>";
+                    return;
+                }
+                list.innerHTML = data.map(h => 
+                    `<li>[ID: ${h.id}] <b>${h.name || 'node'}</b> - Статус: ${h.status}</li>`
+                ).join('');
+            })
+            .catch(err => console.error('Ошибка API:', err));
+
+        // 2. Подключение к реалтайм ленте (WebSocket)
+        // Автоматически определяем хост, чтобы не хардкодить порты
+        const wsUrl = `ws://${window.location.host}/ws/events`;
+        const ws = new WebSocket(wsUrl);
+        const logWindow = document.getElementById('events-log');
+
+        ws.onopen = () => {
+            logWindow.innerHTML = '<span style="color: #aaa;">[Соединение с Центром установлено]</span><br>' + logWindow.innerHTML;
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const time = new Date().toLocaleTimeString();
+            
+            // Подсвечиваем опасные события красным (попытки входа и команды)
+            let textClass = data.type.includes('auth') || data.type.includes('command') ? 'alert' : '';
+            let detailsStr = JSON.stringify(data.details);
+            
+            const eventHtml = `
+                <div class="event-item ${textClass}">
+                    [${time}] IP: <b>${data.ip}</b> | Событие: <b>${data.type.toUpperCase()}</b> <br>
+                    Детали: ${detailsStr}
+                </div>
+            `;
+            // Добавляем новые события наверх списка
+            logWindow.innerHTML = eventHtml + logWindow.innerHTML;
+        };
+
+        ws.onerror = (err) => console.error('Ошибка WebSocket:', err);
+    </script>
+</body>
+</html>
