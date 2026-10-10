@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: honey_user
+      POSTGRES_PASSWORD: honey_password
+      POSTGRES_DB: honeyforge
+    networks:
+      - mgmt-network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  control_api:
+    build: ./center
+    environment:
+      DATABASE_URL: postgresql://honey_user:honey_password@db:5432/honeyforge
+    networks:
+      - mgmt-network
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - mgmt-network
+    depends_on:
+      - control_api
+
+  agent_low:
+    build: ./agent
+    networks:
+      - dmz-network
+      - mgmt-network
+    ports:
+      - "2121:21"
+      - "2323:23"
+    depends_on:
+      - nginx
+
+networks:
+  dmz-network:
+    driver: bridge
+  mgmt-network:
+    driver: bridge
+    internal: true # Изоляция контура управления
+
+volumes:
+  pgdata:
