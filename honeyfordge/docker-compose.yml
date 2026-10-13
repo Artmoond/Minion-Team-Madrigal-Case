@@ -50,7 +50,7 @@ networks:
     driver: bridge
   mgmt-network:
     driver: bridge
-    internal: true # Изоляция контура управления
+    #internal: true # вот эта штука не позволяла увидеть страничку
 
 volumes:
   pgdata:
