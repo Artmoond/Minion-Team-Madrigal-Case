@@ -1,0 +1,5 @@
+TEAM_GUIDE.md
+__pycache__/
+*.pyc
+.env
+pgdata/

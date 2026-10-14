@@ -2,75 +2,1170 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>HoneyForge Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoneyForge | Next-Gen Cyber Deception Platform</title>
+    
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js & Leaflet Map -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { font-family: system-ui, sans-serif; background: #111; color: #eee; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-        .card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; }
-        .log { font-family: monospace; color: #0f0; background: #000; padding: 10px; height: 500px; overflow-y: auto; }
-        .event-item { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px; }
-        .alert { color: #ff4444; }
+        :root {
+            --bg-base: #06080e;
+            --bg-surface: #0c101b;
+            --bg-card: rgba(16, 22, 38, 0.75);
+            --border-card: rgba(30, 41, 69, 0.7);
+            --border-glow: rgba(0, 240, 255, 0.25);
+            
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --neon-cyan: #00f0ff;
+            --neon-red: #ff2a5f;
+            --neon-green: #00ff88;
+            --neon-amber: #ffb703;
+            --neon-purple: #b5179e;
+            
+            --badge-crit: rgba(255, 42, 95, 0.15);
+            --badge-high: rgba(255, 183, 3, 0.15);
+            --badge-warn: rgba(0, 240, 255, 0.15);
+            --badge-info: rgba(100, 116, 139, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 42, 95, 0.04) 0%, transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 24px;
+            line-height: 1.5;
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            font-size: 32px;
+            filter: drop-shadow(0 0 12px rgba(255, 183, 3, 0.4));
+        }
+
+        .brand-text h1 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 40%, var(--neon-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--neon-cyan);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--neon-green);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 8px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 255, 136, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-card);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--neon-cyan);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+        }
+        .btn-primary:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+        }
+
+        .btn-danger {
+            background: rgba(255, 42, 95, 0.15);
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+        .btn-danger:hover {
+            background: var(--neon-red);
+            color: #fff;
+        }
+
+        /* --- KPI Stat Cards Grid --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 14px;
+            padding: 18px 20px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--border-glow);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--card-accent, var(--neon-cyan)), transparent);
+        }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .kpi-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--card-accent, var(--neon-cyan));
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.5px;
+            color: #fff;
+        }
+
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* --- Main Analytics Layout Grid --- */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 1.1fr 1.9fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+
+        .card-title i {
+            color: var(--neon-cyan);
+        }
+
+        /* --- Map Container --- */
+        #threat-map {
+            width: 100%;
+            height: 280px;
+            background: #080c14;
+        }
+
+        .leaflet-container {
+            background: #080c14 !important;
+        }
+
+        /* --- Decoy Nodes List --- */
+        .node-list {
+            padding: 12px 16px;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .node-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px 16px;
+            transition: all 0.2s;
+        }
+
+        .node-item:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            background: rgba(0, 240, 255, 0.02);
+        }
+
+        .node-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .node-meta {
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .node-tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .tag-pill {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* --- Charts Grid --- */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 180px;
+        }
+
+        /* --- Threat Stream Filter Bar --- */
+        .feed-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 240, 255, 0.15);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        .search-box {
+            position: relative;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 6px 12px 6px 32px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--neon-cyan);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* --- Events Stream List --- */
+        .events-stream {
+            height: 600px;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+        }
+
+        .events-stream::-webkit-scrollbar {
+            width: 6px;
+        }
+        .events-stream::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .event-card {
+            background: rgba(16, 22, 38, 0.6);
+            border: 1px solid var(--border-card);
+            border-left: 4px solid var(--badge-color, var(--neon-cyan));
+            border-radius: 10px;
+            padding: 14px 16px;
+            transition: all 0.2s ease;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .event-card:hover {
+            background: rgba(20, 28, 48, 0.85);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .event-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .event-origin {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .event-ip {
+            font-family: 'JetBrains Mono', monospace;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .event-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .badge-critical {
+            background: var(--badge-crit);
+            color: var(--neon-red);
+            border: 1px solid rgba(255, 42, 95, 0.4);
+            box-shadow: 0 0 8px rgba(255, 42, 95, 0.2);
+        }
+
+        .badge-high {
+            background: var(--badge-high);
+            color: var(--neon-amber);
+            border: 1px solid rgba(255, 183, 3, 0.4);
+        }
+
+        .badge-warning {
+            background: var(--badge-warn);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+        }
+
+        .badge-info {
+            background: var(--badge-info);
+            color: var(--text-secondary);
+        }
+
+        .event-mitre {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--neon-purple);
+            background: rgba(181, 23, 158, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(181, 23, 158, 0.2);
+        }
+
+        .event-body {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-primary);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            word-break: break-all;
+        }
+
+        .term-cmd {
+            color: var(--neon-green);
+        }
+        .term-cmd::before {
+            content: "root@srv:~# ";
+            color: var(--text-muted);
+        }
+
+        .cred-box {
+            display: flex;
+            gap: 16px;
+            color: var(--neon-amber);
+        }
+
+        .payload-alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--neon-red);
+            font-weight: 600;
+        }
+
+        /* --- Footer --- */
+        footer {
+            margin-top: 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .pulse-marker {
+            width: 14px;
+            height: 14px;
+            background: var(--neon-red);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            animation: mapPulse 1.5s infinite;
+        }
+
+        @keyframes mapPulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
     </style>
 </head>
 <body>
-    <h1>🍯 HoneyForge Control Center</h1>
-    <div class="grid">
-        <div class="card">
-            <h2>Активные ловушки</h2>
-            <ul id="honeypots-list">Загрузка...</ul>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">🍯</div>
+            <div class="brand-text">
+                <h1>HONEYFORGE <span style="font-weight: 300; font-size: 16px; color: var(--text-muted)">// SOC CONSOLE</span></h1>
+                <p>Distributed Cyber Deception & Honeypot Platform</p>
+            </div>
         </div>
-        
-        <div class="card">
-            <h2>Live Лента Инцидентов</h2>
-            <div id="events-log" class="log">Ожидание событий...<br></div>
+
+        <div class="header-actions">
+            <div class="status-pill">
+                <div class="status-dot"></div>
+                <span id="ws-status-text">DECEPTION ACTIVE</span>
+            </div>
+
+            <button class="btn" id="sound-btn" onclick="toggleSound()">
+                <i class="fa-solid fa-volume-high"></i> <span id="sound-label">Аудио: ВКЛ</span>
+            </button>
+
+            <button class="btn btn-primary" onclick="exportReport()">
+                <i class="fa-solid fa-file-arrow-down"></i> Экспорт Отчета
+            </button>
+
+            <button class="btn btn-danger" onclick="clearEvents()">
+                <i class="fa-solid fa-trash-can"></i> Сброс
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI HUD Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card" style="--card-accent: var(--neon-cyan)">
+            <div class="kpi-header">
+                <span>ВСЕГО ПЕРЕХВАЧЕНО</span>
+                <div class="kpi-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-total">0</div>
+            <div class="kpi-sub">Событий телеметрии в базе</div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: var(--neon-red)">
+            <div class="kpi-header">
+                <span>КРИТИЧЕСКИЕ ИНЦИДЕНТЫ</span>
+                <div class="kpi-icon" style="color: var(--neon-red)"><i class="fa-solid fa-skull"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-critical" style="color: var(--neon-red)">0</div>
+            <div class="kpi-sub">Shell команды / Загрузка малвари</div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: var(--neon-amber)">
+            <div class="kpi-header">
+                <span>АТАКУЮЩИЕ IP</span>
+                <div class="kpi-icon" style="color: var(--neon-amber)"><i class="fa-solid fa-network-wired"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-ips">0</div>
+            <div class="kpi-sub">Уникальных источников атак</div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: var(--neon-green)">
+            <div class="kpi-header">
+                <span>АКТИВНЫЕ ЛОВУШКИ</span>
+                <div class="kpi-icon" style="color: var(--neon-green)"><i class="fa-solid fa-server"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-traps" style="color: var(--neon-green)">1</div>
+            <div class="kpi-sub">Сервисы: SSH, Telnet, FTP</div>
         </div>
     </div>
 
-    <script>
-        // 1. Загрузка списка ловушек (REST API)
-        fetch('/api/honeypots')
-            .then(res => res.json())
-            .then(data => {
-                const list = document.getElementById('honeypots-list');
-                if (data.length === 0) {
-                    list.innerHTML = "<li>Ловушки пока не зарегистрированы</li>";
-                    return;
-                }
-                list.innerHTML = data.map(h => 
-                    `<li>[ID: ${h.id}] <b>${h.name || 'node'}</b> - Статус: ${h.status}</li>`
-                ).join('');
-            })
-            .catch(err => console.error('Ошибка API:', err));
-
-        // 2. Подключение к реалтайм ленте (WebSocket)
-        // Автоматически определяем хост, чтобы не хардкодить порты
-        const wsUrl = `ws://${window.location.host}/ws/events`;
-        const ws = new WebSocket(wsUrl);
-        const logWindow = document.getElementById('events-log');
-
-        ws.onopen = () => {
-            logWindow.innerHTML = '<span style="color: #aaa;">[Соединение с Центром установлено]</span><br>' + logWindow.innerHTML;
-        };
+    <!-- Main Analytics & Feed Layout -->
+    <div class="dashboard-layout">
         
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const time = new Date().toLocaleTimeString();
+        <!-- Left Column: Map, Traps, Stats -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
             
-            // Подсвечиваем опасные события красным (попытки входа и команды)
-            let textClass = data.type.includes('auth') || data.type.includes('command') ? 'alert' : '';
-            let detailsStr = JSON.stringify(data.details);
-            
-            const eventHtml = `
-                <div class="event-item ${textClass}">
-                    [${time}] IP: <b>${data.ip}</b> | Событие: <b>${data.type.toUpperCase()}</b> <br>
-                    Детали: ${detailsStr}
+            <!-- Threat Map Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-earth-americas"></i>
+                        <span>Радар Происхождения Атак (GeoIP)</span>
+                    </div>
+                    <span id="active-geo-count" style="font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">0 локаций</span>
+                </div>
+                <div id="threat-map"></div>
+            </div>
+
+            <!-- Active Decoy Nodes Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-cubes"></i>
+                        <span>Узлы-Ловушки в Контуре DMZ</span>
+                    </div>
+                    <span style="font-size: 11px; color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace;">MASK-2 ISOLATION</span>
+                </div>
+                <ul class="node-list" id="nodes-container">
+                    <li style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 12px;">Опрос состояния ловушек...</li>
+                </ul>
+            </div>
+
+            <!-- Protocol Breakdown & Top Attackers Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Распределение по Протоколам</span>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-box">
+                        <canvas id="protoChart"></canvas>
+                    </div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px;" id="top-passwords-box">
+                        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Топ Паролей Ботнетов</div>
+                        <div id="passwords-pills" style="display: flex; flex-direction: column; gap: 6px;">
+                            <span style="font-size: 12px; color: var(--text-muted);">Сбор данных...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Real-Time Incident Feed -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                    <span>Live Лента Инцидентов Десепшн-Сети</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 12px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" id="autoscroll-chk" checked> Автопрокрутка
+                    </label>
+                </div>
+            </div>
+
+            <div class="feed-controls">
+                <div class="filter-tabs">
+                    <button class="tab-btn active" onclick="setFilter('ALL', this)">Все</button>
+                    <button class="tab-btn" onclick="setFilter('SSH', this)">SSH</button>
+                    <button class="tab-btn" onclick="setFilter('TELNET', this)">Telnet</button>
+                    <button class="tab-btn" onclick="setFilter('FTP', this)">FTP</button>
+                    <button class="tab-btn" onclick="setFilter('CRITICAL', this)">Критические</button>
+                </div>
+
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="filter-search" placeholder="Поиск по IP / команде..." oninput="applyFilters()">
+                </div>
+            </div>
+
+            <div class="events-stream" id="events-stream">
+                <!-- Events rendered here dynamically -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        HoneyForge v2.0 // Architecture: DMZ Decoy Engine + MASK-2 Reverse Proxy + Realtime Threat Intelligence
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // --- Состояние приложения ---
+        let soundEnabled = true;
+        let currentFilter = 'ALL';
+        let currentSearch = '';
+        let allEvents = [];
+        let map = null;
+        let markersLayer = null;
+        let protoChart = null;
+
+        // --- Звуковой синтезатор (Web Audio API) ---
+        let audioCtx = null;
+        function playThreatSound(severity) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (severity === 'critical') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(220, audioCtx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (severity === 'high') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                }
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-label').textContent = soundEnabled ? 'Аудио: ВКЛ' : 'Аудио: ВЫКЛ';
+            document.getElementById('sound-btn').style.opacity = soundEnabled ? '1' : '0.6';
+        }
+
+        // --- Утилиты защиты от XSS ---
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        // --- Инициализация Карты (Leaflet) ---
+        function initMap() {
+            map = L.map('threat-map', {
+                center: [25, 10],
+                zoom: 1.5,
+                minZoom: 1,
+                maxZoom: 6,
+                zoomControl: false,
+                attributionControl: false
+            });
+
+            // Темная картографическая подложка CartoDB Dark Matter
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            markersLayer = L.layerGroup().addTo(map);
+        }
+
+        function addMarkerToMap(lat, lon, label) {
+            if (!lat || !lon || !map) return;
+            const pulseIcon = L.divIcon({
+                className: 'pulse-marker',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+            const marker = L.marker([lat, lon], { icon: pulseIcon }).addTo(markersLayer);
+            marker.bindPopup(`<b style="color:#000;">${escapeHtml(label)}</b>`);
+        }
+
+        // --- Инициализация Графика Протоколов ---
+        function initCharts() {
+            const ctx = document.getElementById('protoChart').getContext('2d');
+            protoChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['SSH', 'Telnet', 'FTP', 'Scans'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#00f0ff', '#ffb703', '#00ff88', '#64748b'],
+                        borderColor: '#0c101b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        // --- Загрузка ловушек (/api/honeypots) ---
+        function loadHoneypots() {
+            fetch('/api/honeypots')
+                .then(r => r.json())
+                .then(nodes => {
+                    const container = document.getElementById('nodes-container');
+                    if (!nodes || nodes.length === 0) {
+                        container.innerHTML = '<li style="color:#64748b;text-align:center;padding:12px;">Ловушки пока не подключены</li>';
+                        return;
+                    }
+
+                    document.getElementById('kpi-traps').textContent = nodes.length;
+
+                    container.innerHTML = nodes.map(n => {
+                        const isOnline = n.status === 'online';
+                        const badgeColor = isOnline ? 'var(--neon-green)' : '#64748b';
+                        const servicesHtml = (n.services || []).map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('');
+                        
+                        return `
+                            <li class="node-item">
+                                <div class="node-info">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${badgeColor}; box-shadow: 0 0 6px ${badgeColor}"></div>
+                                        <h4>${escapeHtml(n.name)}</h4>
+                                    </div>
+                                    <div class="node-meta">IP: ${escapeHtml(n.ip_address)} | Событий: ${n.events_count}</div>
+                                    <div class="node-tags">${servicesHtml}</div>
+                                </div>
+                                <div style="text-align: right; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted)">
+                                    ${escapeHtml(n.status).toUpperCase()}<br>
+                                    ${escapeHtml(n.last_seen)}
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                })
+                .catch(err => console.error('Ошибка загрузки ловушек:', err));
+        }
+
+        // --- Загрузка статистики (/api/stats) ---
+        function loadStats() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(stats => {
+                    document.getElementById('kpi-total').textContent = stats.total_events || 0;
+                    document.getElementById('kpi-critical').textContent = stats.critical_events || 0;
+                    document.getElementById('kpi-ips').textContent = stats.unique_ips || 0;
+
+                    if (protoChart && stats.proto_stats) {
+                        protoChart.data.datasets[0].data = [
+                            stats.proto_stats.SSH || 0,
+                            stats.proto_stats.Telnet || 0,
+                            stats.proto_stats.FTP || 0,
+                            stats.proto_stats.Scan || 0
+                        ];
+                        protoChart.update();
+                    }
+
+                    // Топ паролей
+                    const pwdBox = document.getElementById('passwords-pills');
+                    if (stats.top_passwords && stats.top_passwords.length > 0) {
+                        pwdBox.innerHTML = stats.top_passwords.map(p => `
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px;">
+                                <span style="color: var(--neon-amber);">${escapeHtml(p.password)}</span>
+                                <span style="color: var(--text-muted);">${p.count}x</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        pwdBox.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">Пароли пока не перехвачены</span>';
+                    }
+                })
+                .catch(err => console.error('Ошибка загрузки статистики:', err));
+        }
+
+        // --- Загрузка истории событий (/api/events) ---
+        function loadInitialEvents() {
+            fetch('/api/events?limit=100')
+                .then(r => r.json())
+                .then(data => {
+                    allEvents = data.items || [];
+                    renderEventsList();
+                    // Отобразить координаты на карте
+                    if (markersLayer) markersLayer.clearLayers();
+                    allEvents.forEach(e => {
+                        if (e.latitude && e.longitude) {
+                            addMarkerToMap(e.latitude, e.longitude, `${e.ip} (${e.country})`);
+                        }
+                    });
+                })
+                .catch(err => console.error('Ошибка загрузки истории событий:', err));
+        }
+
+        // --- Рендеринг карточки события ---
+        function createEventCard(data) {
+            const timeStr = data.timestamp ? data.timestamp.split(' ')[1] : new Date().toLocaleTimeString();
+            let badgeClass = 'badge-info';
+            let badgeColor = 'var(--text-muted)';
+
+            if (data.severity === 'critical') {
+                badgeClass = 'badge-critical';
+                badgeColor = 'var(--neon-red)';
+            } else if (data.severity === 'high') {
+                badgeClass = 'badge-high';
+                badgeColor = 'var(--neon-amber)';
+            } else if (data.severity === 'warning') {
+                badgeClass = 'badge-warning';
+                badgeColor = 'var(--neon-cyan)';
+            }
+
+            // Формирование содержимого деталей
+            let detailsHtml = '';
+            const d = data.details || {};
+
+            if (data.type === 'ssh_command' || data.type === 'telnet_command') {
+                detailsHtml = `<div class="term-cmd">${escapeHtml(d.command || '')}</div>`;
+            } else if (data.type.includes('auth')) {
+                detailsHtml = `
+                    <div class="cred-box">
+                        <span><i class="fa-solid fa-user"></i> <b>${escapeHtml(d.username || 'n/a')}</b></span>
+                        <span><i class="fa-solid fa-key"></i> <b>${escapeHtml(d.password || 'n/a')}</b></span>
+                        <span style="color: var(--text-muted);"><i class="fa-solid fa-door-open"></i> Порт: ${escapeHtml(d.target_port || '')}</span>
+                    </div>
+                `;
+            } else if (data.type === 'payload_download') {
+                detailsHtml = `
+                    <div class="payload-alert">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>ПЕРЕХВАЧЕНА ССЫЛКА НА ВРЕДОНОС: <b style="text-decoration: underline;">${escapeHtml(d.url || '')}</b></span>
+                    </div>
+                `;
+            } else if (data.type === 'scan_detected') {
+                detailsHtml = `<span style="color: var(--neon-cyan);"><i class="fa-solid fa-radar"></i> Сканирование порта: <b>${escapeHtml(d.target_port)}</b> (${escapeHtml(d.protocol || 'TCP')})</span>`;
+            } else {
+                detailsHtml = `<span>${escapeHtml(JSON.stringify(d))}</span>`;
+            }
+
+            return `
+                <div class="event-card" style="--badge-color: ${badgeColor};" data-type="${escapeHtml(data.type)}" data-sev="${escapeHtml(data.severity)}" data-ip="${escapeHtml(data.ip)}" data-body="${escapeHtml(JSON.stringify(d))}">
+                    <div class="event-top">
+                        <div class="event-origin">
+                            <span style="font-size: 16px;">${escapeHtml(data.flag || '🌐')}</span>
+                            <span class="event-ip">${escapeHtml(data.ip)}</span>
+                            <span style="color: var(--text-muted); font-size: 12px;">${escapeHtml(data.city || '')}, ${escapeHtml(data.country || 'Unknown')}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${data.mitre ? `<span class="event-mitre">${escapeHtml(data.mitre)}</span>` : ''}
+                            <span class="event-badge ${badgeClass}">${escapeHtml(data.type).toUpperCase()}</span>
+                            <span style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 11px;">[${escapeHtml(timeStr)}]</span>
+                        </div>
+                    </div>
+                    <div class="event-body">
+                        ${detailsHtml}
+                    </div>
                 </div>
             `;
-            // Добавляем новые события наверх списка
-            logWindow.innerHTML = eventHtml + logWindow.innerHTML;
-        };
+        }
 
-        ws.onerror = (err) => console.error('Ошибка WebSocket:', err);
+        function renderEventsList() {
+            const container = document.getElementById('events-stream');
+            let filtered = allEvents;
+
+            // Фильтр по табам
+            if (currentFilter === 'SSH') filtered = filtered.filter(e => e.type.includes('ssh'));
+            else if (currentFilter === 'TELNET') filtered = filtered.filter(e => e.type.includes('telnet'));
+            else if (currentFilter === 'FTP') filtered = filtered.filter(e => e.type.includes('ftp'));
+            else if (currentFilter === 'CRITICAL') filtered = filtered.filter(e => e.severity === 'critical' || e.severity === 'high');
+
+            // Текстовый поиск
+            if (currentSearch.trim()) {
+                const q = currentSearch.toLowerCase();
+                filtered = filtered.filter(e => {
+                    const ip = (e.ip || '').toLowerCase();
+                    const country = (e.country || '').toLowerCase();
+                    const det = JSON.stringify(e.details || {}).toLowerCase();
+                    return ip.includes(q) || country.includes(q) || det.includes(q);
+                });
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 40px; font-size: 13px;">События не найдены</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(e => createEventCard(e)).join('');
+        }
+
+        function setFilter(filter, btn) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderEventsList();
+        }
+
+        function applyFilters() {
+            currentSearch = document.getElementById('filter-search').value;
+            renderEventsList();
+        }
+
+        // --- WebSocket Подключение ---
+        function initWebSocket() {
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${proto}//${window.location.host}/ws/events`;
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('ws-status-text').textContent = 'ДЕЙСТВУЕТ (РЕАЛТАЙМ)';
+                console.log('[WS] Подключено к HoneyForge Stream');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Добавляем в начало массива
+                    allEvents.unshift(data);
+                    if (allEvents.length > 300) allEvents.pop();
+
+                    // Воспроизводим звук
+                    playThreatSound(data.severity);
+
+                    // Добавляем на карту
+                    if (data.latitude && data.longitude) {
+                        addMarkerToMap(data.latitude, data.longitude, `${data.ip} (${data.country})`);
+                    }
+
+                    // Перерисовываем список
+                    renderEventsList();
+
+                    // Обновляем KPI
+                    loadStats();
+
+                    // Автоскролл вверх
+                    if (document.getElementById('autoscroll-chk').checked) {
+                        const stream = document.getElementById('events-stream');
+                        stream.scrollTop = 0;
+                    }
+                } catch (err) {
+                    console.error('Ошибка парсинга WS сообщения:', err);
+                }
+            };
+
+            ws.onclose = () => {
+                document.getElementById('ws-status-text').textContent = 'ПЕРЕПОДКЛЮЧЕНИЕ...';
+                setTimeout(initWebSocket, 2500);
+            };
+
+            ws.onerror = (err) => {
+                console.error('[WS] Ошибка соединения:', err);
+            };
+        }
+
+        // --- Действия: Экспорт и Очистка ---
+        function exportReport() {
+            window.location.href = '/api/export';
+        }
+
+        function clearEvents() {
+            if (confirm('Сбросить все перехваченные события?')) {
+                fetch('/api/events/clear', { method: 'DELETE' })
+                    .then(() => {
+                        allEvents = [];
+                        renderEventsList();
+                        loadStats();
+                        if (markersLayer) markersLayer.clearLayers();
+                    });
+            }
+        }
+
+        // --- Автозапуск ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initCharts();
+            loadHoneypots();
+            loadStats();
+            loadInitialEvents();
+            initWebSocket();
+
+            // Периодическое обновление статусов ловушек и статистики
+            setInterval(loadHoneypots, 10000);
+            setInterval(loadStats, 15000);
+        });
     </script>
 </body>
 </html>

@@ -9,15 +9,24 @@ services:
       - mgmt-network
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U honey_user -d honeyforge"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
 
   control_api:
     build: ./center
     environment:
       DATABASE_URL: postgresql://honey_user:honey_password@db:5432/honeyforge
+      PYTHONUNBUFFERED: "1"
     networks:
       - mgmt-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
@@ -31,18 +40,23 @@ services:
       - mgmt-network
     depends_on:
       - control_api
+    restart: unless-stopped
 
   agent_low:
     build: ./agent
+    environment:
+      - PYTHONUNBUFFERED=1
     networks:
       - dmz-network
-      - mgmt-network
     ports:
       - "2121:21"
       - "2323:23"
       - "2222:2222"
+    volumes:
+      - agent_data:/app/data
     depends_on:
       - nginx
+    restart: unless-stopped
 
 networks:
   dmz-network:
@@ -53,3 +67,4 @@ networks:
 
 volumes:
   pgdata:
+  agent_data:

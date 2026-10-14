@@ -2,6 +2,6 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg[binary]
-psycopg[binary]
 pydantic
 websockets
+httpx
