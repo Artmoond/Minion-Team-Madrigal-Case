@@ -885,9 +885,21 @@
             });
         }
 
+        // Автоопределение базового URL (поддержка открытия как через http://localhost:8080, так и напрямую через file://)
+        const API_BASE = (window.location.protocol === 'file:' || !window.location.host) ? 'http://localhost:8080' : '';
+        const WS_HOST = (window.location.protocol === 'file:' || !window.location.host) ? 'localhost:8080' : window.location.host;
+
+        function updateGeoCount() {
+            const countEl = document.getElementById('active-geo-count');
+            if (countEl) {
+                const uniqueLocs = new Set(allEvents.map(e => `${e.latitude},${e.longitude}`).filter(l => l && !l.includes('null') && !l.includes('undefined')));
+                countEl.textContent = `${uniqueLocs.size} локаций`;
+            }
+        }
+
         // --- Загрузка ловушек (/api/honeypots) ---
         function loadHoneypots() {
-            fetch('/api/honeypots')
+            fetch(`${API_BASE}/api/honeypots`)
                 .then(r => r.json())
                 .then(nodes => {
                     const container = document.getElementById('nodes-container');
@@ -926,7 +938,7 @@
 
         // --- Загрузка статистики (/api/stats) ---
         function loadStats() {
-            fetch('/api/stats')
+            fetch(`${API_BASE}/api/stats`)
                 .then(r => r.json())
                 .then(stats => {
                     document.getElementById('kpi-total').textContent = stats.total_events || 0;
@@ -961,7 +973,7 @@
 
         // --- Загрузка истории событий (/api/events) ---
         function loadInitialEvents() {
-            fetch('/api/events?limit=100')
+            fetch(`${API_BASE}/api/events?limit=100`)
                 .then(r => r.json())
                 .then(data => {
                     allEvents = data.items || [];
@@ -973,6 +985,7 @@
                             addMarkerToMap(e.latitude, e.longitude, `${e.ip} (${e.country})`);
                         }
                     });
+                    updateGeoCount();
                 })
                 .catch(err => console.error('Ошибка загрузки истории событий:', err));
         }
@@ -997,10 +1010,11 @@
             // Формирование содержимого деталей
             let detailsHtml = '';
             const d = data.details || {};
+            const eventType = data.type || 'unknown';
 
-            if (data.type === 'ssh_command' || data.type === 'telnet_command') {
+            if (eventType === 'ssh_command' || eventType === 'telnet_command') {
                 detailsHtml = `<div class="term-cmd">${escapeHtml(d.command || '')}</div>`;
-            } else if (data.type.includes('auth')) {
+            } else if (eventType.includes('auth')) {
                 detailsHtml = `
                     <div class="cred-box">
                         <span><i class="fa-solid fa-user"></i> <b>${escapeHtml(d.username || 'n/a')}</b></span>
@@ -1008,30 +1022,30 @@
                         <span style="color: var(--text-muted);"><i class="fa-solid fa-door-open"></i> Порт: ${escapeHtml(d.target_port || '')}</span>
                     </div>
                 `;
-            } else if (data.type === 'payload_download') {
+            } else if (eventType === 'payload_download') {
                 detailsHtml = `
                     <div class="payload-alert">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <span>ПЕРЕХВАЧЕНА ССЫЛКА НА ВРЕДОНОС: <b style="text-decoration: underline;">${escapeHtml(d.url || '')}</b></span>
                     </div>
                 `;
-            } else if (data.type === 'scan_detected') {
+            } else if (eventType === 'scan_detected') {
                 detailsHtml = `<span style="color: var(--neon-cyan);"><i class="fa-solid fa-radar"></i> Сканирование порта: <b>${escapeHtml(d.target_port)}</b> (${escapeHtml(d.protocol || 'TCP')})</span>`;
             } else {
                 detailsHtml = `<span>${escapeHtml(JSON.stringify(d))}</span>`;
             }
 
             return `
-                <div class="event-card" style="--badge-color: ${badgeColor};" data-type="${escapeHtml(data.type)}" data-sev="${escapeHtml(data.severity)}" data-ip="${escapeHtml(data.ip)}" data-body="${escapeHtml(JSON.stringify(d))}">
+                <div class="event-card" style="--badge-color: ${badgeColor};" data-type="${escapeHtml(eventType)}" data-sev="${escapeHtml(data.severity || 'info')}" data-ip="${escapeHtml(data.ip || '')}" data-body="${escapeHtml(JSON.stringify(d))}">
                     <div class="event-top">
                         <div class="event-origin">
                             <span style="font-size: 16px;">${escapeHtml(data.flag || '🌐')}</span>
-                            <span class="event-ip">${escapeHtml(data.ip)}</span>
+                            <span class="event-ip">${escapeHtml(data.ip || '')}</span>
                             <span style="color: var(--text-muted); font-size: 12px;">${escapeHtml(data.city || '')}, ${escapeHtml(data.country || 'Unknown')}</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             ${data.mitre ? `<span class="event-mitre">${escapeHtml(data.mitre)}</span>` : ''}
-                            <span class="event-badge ${badgeClass}">${escapeHtml(data.type).toUpperCase()}</span>
+                            <span class="event-badge ${badgeClass}">${escapeHtml(eventType).toUpperCase()}</span>
                             <span style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 11px;">[${escapeHtml(timeStr)}]</span>
                         </div>
                     </div>
@@ -1047,9 +1061,9 @@
             let filtered = allEvents;
 
             // Фильтр по табам
-            if (currentFilter === 'SSH') filtered = filtered.filter(e => e.type.includes('ssh'));
-            else if (currentFilter === 'TELNET') filtered = filtered.filter(e => e.type.includes('telnet'));
-            else if (currentFilter === 'FTP') filtered = filtered.filter(e => e.type.includes('ftp'));
+            if (currentFilter === 'SSH') filtered = filtered.filter(e => (e.type || '').includes('ssh'));
+            else if (currentFilter === 'TELNET') filtered = filtered.filter(e => (e.type || '').includes('telnet'));
+            else if (currentFilter === 'FTP') filtered = filtered.filter(e => (e.type || '').includes('ftp'));
             else if (currentFilter === 'CRITICAL') filtered = filtered.filter(e => e.severity === 'critical' || e.severity === 'high');
 
             // Текстовый поиск
@@ -1086,7 +1100,7 @@
         // --- WebSocket Подключение ---
         function initWebSocket() {
             const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${proto}//${window.location.host}/ws/events`;
+            const wsUrl = `${proto}//${WS_HOST}/ws/events`;
             const ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
@@ -1113,6 +1127,9 @@
                     // Перерисовываем список
                     renderEventsList();
 
+                    // Обновляем счетчик локаций
+                    updateGeoCount();
+
                     // Обновляем KPI
                     loadStats();
 
@@ -1138,17 +1155,18 @@
 
         // --- Действия: Экспорт и Очистка ---
         function exportReport() {
-            window.location.href = '/api/export';
+            window.location.href = `${API_BASE}/api/export`;
         }
 
         function clearEvents() {
             if (confirm('Сбросить все перехваченные события?')) {
-                fetch('/api/events/clear', { method: 'DELETE' })
+                fetch(`${API_BASE}/api/events/clear`, { method: 'DELETE' })
                     .then(() => {
                         allEvents = [];
                         renderEventsList();
                         loadStats();
                         if (markersLayer) markersLayer.clearLayers();
+                        updateGeoCount();
                     });
             }
         }
